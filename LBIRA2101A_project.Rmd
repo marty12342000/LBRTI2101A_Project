@@ -1,0 +1,100 @@
+---
+title: "Projet LBIR2101A"
+author: "Groupe 5"
+date: "October 2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+  
+```{r setup, include=FALSE}
+rm(list=ls())
+knitr::opts_chunk$set(echo = TRUE, message=FALSE )
+
+library(data.table)
+library(ggplot2)
+library(PerformanceAnalytics)
+library(car)
+library(gstat)
+library(latticeExtra)
+library(rgl)
+library(fields)
+
+```
+
+Load the dataset:
+
+```{r}
+
+data_na <- fread("groupe5.csv")
+```
+
+Display a summary of the datatable that was created. 
+
+``` {r}
+summary(data)
+```
+
+``` {r}
+data <- na.omit(data_na)
+```
+
+Variogram of nickel (fit.method = 6)
+``` {r}
+
+Ni.gstat <- gstat(formula=Ni~1, data=data, locations=~X+Y)
+
+Ni.vario <- variogram(Ni.gstat,cutoff = 10, width = 0.75)
+
+plot(Ni.vario, main = "Variogram of Nickel", pch = 16, col = 'black')
+
+vg.model <- vgm(psill= 60,model= "Exp",nugget=10)
+
+fit.vg.model <- fit.variogram(Ni.vario, model=vg.model, fit.method = 6)
+plot(Ni.vario, model=fit.vg.model, main="Variogram of Nickel",
+pch=16,col='black')
+trellis.focus("panel",1,1)
+llines(x=c(0,6), y= c(var(data$Ni)), col="red", lwd=1, lty=2)
+trellis.unfocus()
+```
+
+Variogram of Zinc (fit.method = 6)
+``` {r}
+Zn.gstat <- gstat(id = "Zn", formula=Zn~1, data=data, locations=~X+Y)
+Zn.vario <- variogram(Zn.gstat,cutoff = 10, width = 0.75)
+plot(Zn.vario)
+
+vg.model <- vgm(psill=NA,model="Exp",nugget=0)
+Zn.vg.fit <- fit.variogram(Zn.vario, model=vg.model, fit.method = 6)
+
+plot(Zn.vario, model=Zn.vg.fit, main="Variogram of Zinc", pch=16,col='black')
+```
+Variogram of Chromium (fit.method = 7)
+``` {r}
+Cr.gstat <- gstat(id = "Cr", formula=Cr~1, data=data, locations=~X+Y)
+Cr.vario <- variogram(Cr.gstat,cutoff = 10, width = 0.75)
+plot(Cr.vario)
+
+vg.model <- vgm(psill=NA,model="Exp",nugget=0)
+Cr.vg.fit <- fit.variogram(Cr.vario, model=vg.model)
+
+plot(Cr.vario, model=Cr.vg.fit, main="Variogram of Chromium", pch=16,col='black')
+```
+
+Prediction grid
+``` {r}
+gridsize = 1000
+xmin <- floor(min(data$X))
+xmax <- ceiling(max(data$X))
+ymin <- floor(min(data$Y))
+ymax <- ceiling(max(data$Y))
+
+x <- seq(xmin, xmax, by=gridsize)
+y <- seq(ymin, ymax, by=gridsize)
+
+data.grid <- as.data.table(expand.grid(x=x, y=y))
+
+ggplot(data.grid) + geom_point(aes(x=x,y=y),shape = 3,
+size=0.5, color = "grey") + geom_point(data = data,aes(x=X,y=Y,color=Ni)) +labs(x = "Longitude (km)", y = "Latitude (km)",title ="Nickel prediction")
+```
+
